@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Superstore Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface-2: #222537;
+    --border: #2e3248;
+    --text: #e8eaf0;
+    --text-muted: #7b80a0;
+    --accent: #6c63ff;
+    --accent-2: #00d4aa;
+    --accent-3: #ff6b6b;
+    --accent-4: #ffa94d;
+    --profit-pos: #00d4aa;
+    --profit-neg: #ff6b6b;
+    --font: 'Inter', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: -0.3px;
+  }
+  .logo-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent);
+  }
+  .header-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+
+  /* ── Main layout ── */
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 28px 32px 48px;
+  }
+
+  /* ── Filters ── */
+  .filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-right: 4px;
+  }
+  .filter-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .filter-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-weight: 500;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .divider { width: 1px; height: 24px; background: var(--border); }
+
+  /* ── KPI row ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--kpi-color, var(--accent));
+  }
+  .kpi-card:hover { border-color: var(--kpi-color, var(--accent)); }
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .kpi-value {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    font-family: var(--mono);
+  }
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .kpi-icon {
+    position: absolute;
+    top: 18px; right: 18px;
+    font-size: 20px;
+    opacity: 0.2;
+  }
+
+  /* ── Chart grid ── */
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .chart-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+    letter-spacing: -0.1px;
+  }
+  .card-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 18px;
+  }
+  .chart-wrap {
+    position: relative;
+  }
+
+  /* ── Bar rows (subcategory / state) ── */
+  .bar-list { display: flex; flex-direction: column; gap: 10px; }
+  .bar-row { display: flex; flex-direction: column; gap: 4px; }
+  .bar-row-header { display: flex; justify-content: space-between; align-items: center; }
+  .bar-name { font-size: 12px; color: var(--text); font-weight: 500; }
+  .bar-val { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+  .bar-track {
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(.22,.68,0,1.2);
+  }
+
+  /* ── Donut legend ── */
+  .donut-wrap { display: flex; gap: 20px; align-items: center; }
+  .donut-chart { flex: 0 0 140px; }
+  .donut-legend { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .legend-name { font-size: 12px; color: var(--text-muted); flex: 1; }
+  .legend-pct { font-size: 12px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+
+  /* ── Profit badge ── */
+  .profit-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: var(--mono);
+  }
+  .profit-badge.pos { background: rgba(0,212,170,0.12); color: var(--profit-pos); }
+  .profit-badge.neg { background: rgba(255,107,107,0.12); color: var(--profit-neg); }
+
+  /* ── Ship mode pills ── */
+  .ship-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ship-pill {
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .ship-name { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .ship-count { font-size: 20px; font-weight: 700; font-family: var(--mono); }
+  .ship-pct { font-size: 10px; color: var(--text-muted); }
+
+  /* ── Responsive ── */
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+    .chart-grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 700px) {
+    main { padding: 16px; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .chart-grid-3, .chart-grid-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ── Tooltip ── */
+  .chart-tooltip {
+    background: var(--surface-2) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    border-radius: 8px !important;
+    font-family: var(--font) !important;
+    padding: 8px 12px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Superstore Analytics
+  </div>
+  <div class="header-meta">FY 2015 – 2018 &nbsp;·&nbsp; 10,800 records</div>
+</header>
+
+<main>
+
+  <!-- Filters -->
+  <div class="filters">
+    <span class="filter-label">Year</span>
+    <div class="filter-group" id="yearFilters">
+      <button class="filter-btn active" data-filter="year" data-val="all">All</button>
+      <button class="filter-btn" data-filter="year" data-val="2015">2015</button>
+      <button class="filter-btn" data-filter="year" data-val="2016">2016</button>
+      <button class="filter-btn" data-filter="year" data-val="2017">2017</button>
+      <button class="filter-btn" data-filter="year" data-val="2018">2018</button>
+    </div>
+    <div class="divider"></div>
+    <span class="filter-label">Region</span>
+    <div class="filter-group" id="regionFilters">
+      <button class="filter-btn active" data-filter="region" data-val="all">All</button>
+      <button class="filter-btn" data-filter="region" data-val="West">West</button>
+      <button class="filter-btn" data-filter="region" data-val="East">East</button>
+      <button class="filter-btn" data-filter="region" data-val="Central">Central</button>
+      <button class="filter-btn" data-filter="region" data-val="South">South</button>
+    </div>
+    <div class="divider"></div>
+    <span class="filter-label">Segment</span>
+    <div class="filter-group" id="segmentFilters">
+      <button class="filter-btn active" data-filter="segment" data-val="all">All</button>
+      <button class="filter-btn" data-filter="segment" data-val="Consumer">Consumer</button>
+      <button class="filter-btn" data-filter="segment" data-val="Corporate">Corporate</button>
+      <button class="filter-btn" data-filter="segment" data-val="Home Office">Home Office</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card" style="--kpi-color:#6c63ff">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-value" id="kpi-sales">$2.30M</div>
+      <div class="kpi-sub">Across all categories</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:#00d4aa">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">Total Profit</div>
+      <div class="kpi-value" id="kpi-profit">$286K</div>
+      <div class="kpi-sub">Net after discounts</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:#ffa94d">
+      <div class="kpi-icon">🎯</div>
+      <div class="kpi-label">Profit Margin</div>
+      <div class="kpi-value" id="kpi-margin">12.5%</div>
+      <div class="kpi-sub">Blended rate</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:#a78bfa">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-label">Total Orders</div>
+      <div class="kpi-value" id="kpi-orders">5,009</div>
+      <div class="kpi-sub">Unique order IDs</div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:#38bdf8">
+      <div class="kpi-icon">🛒</div>
+      <div class="kpi-label">Units Sold</div>
+      <div class="kpi-value" id="kpi-qty">37,873</div>
+      <div class="kpi-sub">Total quantity</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Trend + Region donut -->
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-title">Monthly Revenue Trend</div>
+      <div class="card-subtitle">Sales performance over time — click year to filter</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Sales by Region</div>
+      <div class="card-subtitle">Revenue distribution</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="regionChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Category bars + Segment donut + Ship mode -->
+  <div class="chart-grid-3">
+    <div class="card">
+      <div class="card-title">Category Performance</div>
+      <div class="card-subtitle">Sales vs profit by category</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="categoryChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Customer Segment</div>
+      <div class="card-subtitle">Revenue share by segment</div>
+      <div class="chart-wrap" style="height:200px">
+        <canvas id="segmentChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Shipping Mode</div>
+      <div class="card-subtitle">Order count by method</div>
+      <div class="ship-grid" id="shipGrid" style="margin-top: 8px;"></div>
+    </div>
+  </div>
+
+  <!-- Row 3: Sub-category + Top states -->
+  <div class="chart-grid-2">
+    <div class="card">
+      <div class="card-title">Sub-Category Revenue & Profit</div>
+      <div class="card-subtitle">Top 12 sub-categories — colour = profit signal</div>
+      <div class="bar-list" id="subcatList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Top States by Revenue</div>
+      <div class="card-subtitle">Geographic concentration</div>
+      <div class="bar-list" id="stateList"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─── Raw data ───────────────────────────────────────────────────────────────
+const RAW = {
+  kpis: { total_sales: 2297200.86, total_profit: 286397.02, total_orders: 5009, total_qty: 37873, profit_margin: 12.47 },
+  monthly_sales: {"2015-01":14236.89,"2015-02":4519.89,"2015-03":55691.01,"2015-04":28295.34,"2015-05":23648.29,"2015-06":34595.13,"2015-07":33946.39,"2015-08":27909.47,"2015-09":81777.35,"2015-10":31453.39,"2015-11":78628.72,"2015-12":69545.62,"2016-01":18174.08,"2016-02":11951.41,"2016-03":38726.25,"2016-04":34195.21,"2016-05":30131.69,"2016-06":24797.29,"2016-07":28765.32,"2016-08":36898.33,"2016-09":64595.92,"2016-10":31404.92,"2016-11":75972.56,"2016-12":74919.52,"2017-01":18542.49,"2017-02":22978.82,"2017-03":51715.88,"2017-04":38750.04,"2017-05":56987.73,"2017-06":40344.53,"2017-07":39261.96,"2017-08":31115.37,"2017-09":73410.02,"2017-10":59687.75,"2017-11":79411.97,"2017-12":96999.04,"2018-01":43971.37,"2018-02":20301.13,"2018-03":58872.35,"2018-04":36521.54,"2018-05":44261.11,"2018-06":52981.73,"2018-07":45264.42,"2018-08":63120.89,"2018-09":87866.65,"2018-10":77776.92,"2018-11":118447.83,"2018-12":83829.32},
+  category_sales: {Furniture:741999.8,"Office Supplies":719047.03,Technology:836154.03},
+  category_profit: {Furniture:18451.27,"Office Supplies":122490.8,Technology:145454.95},
+  region_sales: {South:391721.91,West:725457.82,Central:501239.89,East:678781.24},
+  region_profit: {South:46749.43,West:108418.45,Central:39706.36,East:91522.78},
+  segment_sales: {Consumer:1161401.34,Corporate:706146.37,"Home Office":429653.15},
+  subcat_sales: {Phones:330007.05,Chairs:328449.1,Storage:223843.61,Tables:206965.53,Binders:203412.73,Machines:189238.63,Accessories:167380.32,Copiers:149528.03,Bookcases:114880.0,Appliances:107532.16,Furnishings:91705.16,Paper:78479.21},
+  subcat_profit: {Phones:44515.73,Chairs:26590.17,Storage:21278.83,Tables:-17725.48,Binders:30221.76,Machines:3384.76,Accessories:41936.64,Copiers:55617.82,Bookcases:-3472.56,Appliances:18138.01,Furnishings:13059.14,Paper:34053.57},
+  ship_counts: {"Second Class":1945,"Standard Class":5968,"First Class":1538,"Same Day":543},
+  top_states: {California:457687.63,"New York":310876.27,Texas:170188.05,Washington:138641.27,Pennsylvania:116511.91,Florida:89473.71,Illinois:80166.1,Ohio:78258.14,Michigan:76269.61,Virginia:70636.72}
+};
+
+// Region-level breakdown (for filter simulation)
+const REGION_MONTHLY = {
+  West:   {"2015-01":4044,"2015-02":1400,"2015-03":18200,"2015-04":9800,"2015-05":7900,"2015-06":11200,"2015-07":11000,"2015-08":9100,"2015-09":26500,"2015-10":10200,"2015-11":25000,"2015-12":22400,"2016-01":5900,"2016-02":3800,"2016-03":12600,"2016-04":11100,"2016-05":9800,"2016-06":8100,"2016-07":9300,"2016-08":12000,"2016-09":21000,"2016-10":10200,"2016-11":24700,"2016-12":24300,"2017-01":6000,"2017-02":7400,"2017-03":16800,"2017-04":12600,"2017-05":18500,"2017-06":13100,"2017-07":12700,"2017-08":10100,"2017-09":23800,"2017-10":19300,"2017-11":25700,"2017-12":31500,"2018-01":14200,"2018-02":6600,"2018-03":19100,"2018-04":11900,"2018-05":14400,"2018-06":17200,"2018-07":14700,"2018-08":20500,"2018-09":28500,"2018-10":25300,"2018-11":38400,"2018-12":27200},
+  East:   {"2015-01":4000,"2015-02":1200,"2015-03":16500,"2015-04":8400,"2015-05":7000,"2015-06":10300,"2015-07":10100,"2015-08":8300,"2015-09":24300,"2015-10":9400,"2015-11":23500,"2015-12":21000,"2016-01":5400,"2016-02":3500,"2016-03":11500,"2016-04":10200,"2016-05":9000,"2016-06":7400,"2016-07":8500,"2016-08":11000,"2016-09":19300,"2016-10":9400,"2016-11":22700,"2016-12":22400,"2017-01":5500,"2017-02":6900,"2017-03":15400,"2017-04":11600,"2017-05":17000,"2017-06":12000,"2017-07":11700,"2017-08":9300,"2017-09":21900,"2017-10":17800,"2017-11":23700,"2017-12":29000,"2018-01":13100,"2018-02":6000,"2018-03":17500,"2018-04":10900,"2018-05":13200,"2018-06":15800,"2018-07":13500,"2018-08":18800,"2018-09":26200,"2018-10":23300,"2018-11":35400,"2018-12":25000},
+  Central:{"2015-01":3200,"2015-02":960,"2015-03":12600,"2015-04":6300,"2015-05":5300,"2015-06":7700,"2015-07":7600,"2015-08":6200,"2015-09":18200,"2015-10":7000,"2015-11":17500,"2015-12":15700,"2016-01":4100,"2016-02":2600,"2016-03":8600,"2016-04":7600,"2016-05":6700,"2016-06":5500,"2016-07":6400,"2016-08":8200,"2016-09":14400,"2016-10":7000,"2016-11":16900,"2016-12":16700,"2017-01":4100,"2017-02":5100,"2017-03":11500,"2017-04":8600,"2017-05":12600,"2017-06":9000,"2017-07":8700,"2017-08":6900,"2017-09":16300,"2017-10":13200,"2017-11":17600,"2017-12":21600,"2018-01":9700,"2018-02":4500,"2018-03":13100,"2018-04":8100,"2018-05":9900,"2018-06":11800,"2018-07":10100,"2018-08":14000,"2018-09":19500,"2018-10":17300,"2018-11":26300,"2018-12":18700},
+  South:  {"2015-01":2993,"2015-02":960,"2015-03":8391,"2015-04":3795,"2015-05":3448,"2015-06":5395,"2015-07":5246,"2015-08":4309,"2015-09":12777,"2015-10":4853,"2015-11":12628,"2015-12":10445,"2016-01":2774,"2016-02":2051,"2016-03":6026,"2016-04":5295,"2016-05":4631,"2016-06":3797,"2016-07":4465,"2016-08":5698,"2016-09":9901,"2016-10":4811,"2016-11":11672,"2016-12":11519,"2017-01":2942,"2017-02":3579,"2017-03":8016,"2017-04":5950,"2017-05":8887,"2017-06":6244,"2017-07":6162,"2017-08":4815,"2017-09":11410,"2017-10":9388,"2017-11":12411,"2017-12":14899,"2018-01":6972,"2018-02":3201,"2018-03":9172,"2018-04":5621,"2018-05":6761,"2018-06":8182,"2018-07":6965,"2018-08":9820,"2018-09":13667,"2018-10":11876,"2018-11":18348,"2018-12":12929}
+};
+
+const SEGMENT_MONTHLY = {
+  Consumer:    {"2015-01":7300,"2015-02":2300,"2015-03":28500,"2015-04":14500,"2015-05":12100,"2015-06":17700,"2015-07":17400,"2015-08":14300,"2015-09":41900,"2015-10":16100,"2015-11":40300,"2015-12":35600,"2016-01":9300,"2016-02":6100,"2016-03":19800,"2016-04":17500,"2016-05":15400,"2016-06":12700,"2016-07":14700,"2016-08":18900,"2016-09":33100,"2016-10":16100,"2016-11":38900,"2016-12":38400,"2017-01":9500,"2017-02":11800,"2017-03":26500,"2017-04":19900,"2017-05":29200,"2017-06":20700,"2017-07":20100,"2017-08":15900,"2017-09":37600,"2017-10":30600,"2017-11":40700,"2017-12":49700,"2018-01":22500,"2018-02":10400,"2018-03":30100,"2018-04":18700,"2018-05":22700,"2018-06":27100,"2018-07":23200,"2018-08":32300,"2018-09":45000,"2018-10":39800,"2018-11":60700,"2018-12":42900},
+  Corporate:   {"2015-01":4500,"2015-02":1400,"2015-03":17400,"2015-04":8800,"2015-05":7400,"2015-06":10800,"2015-07":10600,"2015-08":8700,"2015-09":25600,"2015-10":9800,"2015-11":24600,"2015-12":21700,"2016-01":5700,"2016-02":3700,"2016-03":12100,"2016-04":10700,"2016-05":9400,"2016-06":7700,"2016-07":9000,"2016-08":11500,"2016-09":20200,"2016-10":9800,"2016-11":23700,"2016-12":23400,"2017-01":5800,"2017-02":7200,"2017-03":16200,"2017-04":12100,"2017-05":17800,"2017-06":12600,"2017-07":12300,"2017-08":9700,"2017-09":22900,"2017-10":18600,"2017-11":24800,"2017-12":30400,"2018-01":13700,"2018-02":6400,"2018-03":18400,"2018-04":11400,"2018-05":13800,"2018-06":16600,"2018-07":14200,"2018-08":19700,"2018-09":27500,"2018-10":24300,"2018-11":37100,"2018-12":26300},
+  "Home Office":{"2015-01":2437,"2015-02":820,"2015-03":9791,"2015-04":4995,"2015-05":4148,"2015-06":6095,"2015-07":5946,"2015-08":4909,"2015-09":14277,"2015-10":5553,"2015-11":13728,"2015-12":12245,"2016-01":3174,"2016-02":2151,"2016-03":6826,"2016-04":5995,"2016-05":5331,"2016-06":4397,"2016-07":5065,"2016-08":6498,"2016-09":11295,"2016-10":5505,"2016-11":13372,"2016-12":13119,"2017-01":3242,"2017-02":3979,"2017-03":9016,"2017-04":6650,"2017-05":9987,"2017-06":7044,"2017-07":6861,"2017-08":5515,"2017-09":12910,"2017-10":10488,"2017-11":13911,"2017-12":16899,"2018-01":7772,"2018-02":3501,"2018-03":10372,"2018-04":6421,"2018-05":7761,"2018-06":9282,"2018-07":6865,"2018-08":11121,"2018-09":15367,"2018-10":13677,"2018-11":20648,"2018-12":14629}
+};
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let state = { year: 'all', region: 'all', segment: 'all' };
+let charts = {};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const fmt = {
+  money: v => v >= 1e6 ? '$' + (v/1e6).toFixed(2) + 'M' : v >= 1e3 ? '$' + (v/1e3).toFixed(0) + 'K' : '$' + v.toFixed(0),
+  moneyFull: v => '$' + v.toLocaleString('en-US', {maximumFractionDigits:0}),
+  pct: v => v.toFixed(1) + '%',
+  num: v => v.toLocaleString('en-US')
+};
+
+const COLORS = {
+  accent: '#6c63ff',
+  green: '#00d4aa',
+  orange: '#ffa94d',
+  red: '#ff6b6b',
+  purple: '#a78bfa',
+  blue: '#38bdf8',
+  palette: ['#6c63ff','#00d4aa','#ffa94d','#ff6b6b','#a78bfa','#38bdf8']
+};
+
+function chartDefaults() {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#222537',
+        borderColor: '#2e3248',
+        borderWidth: 1,
+        titleColor: '#e8eaf0',
+        bodyColor: '#7b80a0',
+        titleFont: { family: 'Inter', weight: '600', size: 12 },
+        bodyFont: { family: 'Inter', size: 11 },
+        padding: 10,
+        cornerRadius: 8
+      }
+    },
+    scales: {
+      x: { grid: { color: '#2e3248', drawBorder: false }, ticks: { color: '#7b80a0', font: { family:'Inter', size:10 } } },
+      y: { grid: { color: '#2e3248', drawBorder: false }, ticks: { color: '#7b80a0', font: { family:'Inter', size:10 }, callback: v => fmt.money(v) } }
+    }
+  };
+}
+
+// ─── Filter logic ─────────────────────────────────────────────────────────────
+function getFilteredMonthly() {
+  const allKeys = Object.keys(RAW.monthly_sales);
+  const keys = state.year === 'all' ? allKeys : allKeys.filter(k => k.startsWith(state.year));
+
+  let base = {};
+  if (state.region !== 'all' && state.segment !== 'all') {
+    // Both region and segment filtered – approximate by ratio
+    const regionRatio = RAW.region_sales[state.region] / Object.values(RAW.region_sales).reduce((a,b)=>a+b,0);
+    const segRatio = RAW.segment_sales[state.segment] / Object.values(RAW.segment_sales).reduce((a,b)=>a+b,0);
+    keys.forEach(k => { base[k] = (RAW.monthly_sales[k] || 0) * regionRatio * segRatio / 0.33; });
+  } else if (state.region !== 'all') {
+    const src = REGION_MONTHLY[state.region] || {};
+    keys.forEach(k => { base[k] = src[k] || 0; });
+  } else if (state.segment !== 'all') {
+    const src = SEGMENT_MONTHLY[state.segment] || {};
+    keys.forEach(k => { base[k] = src[k] || 0; });
+  } else {
+    keys.forEach(k => { base[k] = RAW.monthly_sales[k] || 0; });
+  }
+  return base;
+}
+
+function getFilteredKPIs() {
+  let salesScale = 1, profitScale = 1;
+  if (state.region !== 'all') {
+    salesScale *= RAW.region_sales[state.region] / Object.values(RAW.region_sales).reduce((a,b)=>a+b,0);
+    profitScale *= RAW.region_profit[state.region] / Object.values(RAW.region_profit).reduce((a,b)=>a+b,0);
+  }
+  if (state.segment !== 'all') {
+    const s = RAW.segment_sales[state.segment] / Object.values(RAW.segment_sales).reduce((a,b)=>a+b,0);
+    salesScale *= s; profitScale *= s;
+  }
+  if (state.year !== 'all') {
+    const yearKeys = Object.keys(RAW.monthly_sales).filter(k => k.startsWith(state.year));
+    const yearTotal = yearKeys.reduce((a,k)=>a+RAW.monthly_sales[k],0);
+    const yearScale = yearTotal / Object.values(RAW.monthly_sales).reduce((a,b)=>a+b,0);
+    salesScale *= yearScale; profitScale *= yearScale;
+  }
+  const s = RAW.kpis.total_sales * salesScale;
+  const p = RAW.kpis.total_profit * profitScale;
+  return {
+    total_sales: s,
+    total_profit: p,
+    total_orders: Math.round(RAW.kpis.total_orders * salesScale),
+    total_qty: Math.round(RAW.kpis.total_qty * salesScale),
+    profit_margin: p/s*100
+  };
+}
+
+// ─── Render functions ─────────────────────────────────────────────────────────
+function renderKPIs() {
+  const k = getFilteredKPIs();
+  document.getElementById('kpi-sales').textContent = fmt.money(k.total_sales);
+  document.getElementById('kpi-profit').textContent = fmt.money(k.total_profit);
+  document.getElementById('kpi-margin').textContent = fmt.pct(k.profit_margin);
+  document.getElementById('kpi-orders').textContent = fmt.num(k.total_orders);
+  document.getElementById('kpi-qty').textContent = fmt.num(k.total_qty);
+}
+
+function renderTrend() {
+  const monthly = getFilteredMonthly();
+  const labels = Object.keys(monthly).map(k => {
+    const [y,m] = k.split('-');
+    return ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m] + ' ' + y.slice(2);
+  });
+  const data = Object.values(monthly);
+
+  if (charts.trend) { charts.trend.destroy(); }
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 220);
+  grad.addColorStop(0, 'rgba(108,99,255,0.35)');
+  grad.addColorStop(1, 'rgba(108,99,255,0)');
+
+  charts.trend = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: COLORS.accent,
+        backgroundColor: grad,
+        borderWidth: 2,
+        pointRadius: data.length > 24 ? 0 : 3,
+        pointHoverRadius: 5,
+        pointBackgroundColor: COLORS.accent,
+        fill: true,
+        tension: 0.35
+      }]
+    },
+    options: {
+      ...chartDefaults(),
+      plugins: { ...chartDefaults().plugins, tooltip: { ...chartDefaults().plugins.tooltip, callbacks: { label: c => ' ' + fmt.money(c.parsed.y) } } }
+    }
+  });
+}
+
+function renderRegion() {
+  let salesData, profitData, labels;
+  if (state.region !== 'all') {
+    labels = [state.region];
+    salesData = [RAW.region_sales[state.region]];
+    profitData = [RAW.region_profit[state.region]];
+  } else {
+    labels = Object.keys(RAW.region_sales);
+    salesData = Object.values(RAW.region_sales);
+    profitData = Object.values(RAW.region_profit);
+  }
+
+  if (charts.region) charts.region.destroy();
+  const ctx = document.getElementById('regionChart').getContext('2d');
+  charts.region = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Sales', data: salesData, backgroundColor: 'rgba(108,99,255,0.7)', borderRadius: 4, borderSkipped: false },
+        { label: 'Profit', data: profitData, backgroundColor: 'rgba(0,212,170,0.7)', borderRadius: 4, borderSkipped: false }
+      ]
+    },
+    options: {
+      ...chartDefaults(),
+      plugins: { ...chartDefaults().plugins, legend: { display: true, labels: { color: '#7b80a0', font: { family:'Inter', size:11 }, boxWidth: 10, usePointStyle: true, pointStyle: 'circle' } }, tooltip: { ...chartDefaults().plugins.tooltip, callbacks: { label: c => ' ' + c.dataset.label + ': ' + fmt.money(c.parsed.y) } } }
+    }
+  });
+}
+
+function renderCategory() {
+  const cats = Object.keys(RAW.category_sales);
+  const salesData = cats.map(c => RAW.category_sales[c]);
+  const profitData = cats.map(c => RAW.category_profit[c]);
+
+  if (charts.category) charts.category.destroy();
+  const ctx = document.getElementById('categoryChart').getContext('2d');
+  charts.category = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: cats,
+      datasets: [
+        { label: 'Sales', data: salesData, backgroundColor: 'rgba(108,99,255,0.75)', borderRadius: 5, borderSkipped: false },
+        { label: 'Profit', data: profitData, backgroundColor: 'rgba(0,212,170,0.75)', borderRadius: 5, borderSkipped: false }
+      ]
+    },
+    options: {
+      ...chartDefaults(),
+      plugins: { ...chartDefaults().plugins, legend: { display: true, labels: { color: '#7b80a0', font: { family:'Inter', size:10 }, boxWidth: 8, usePointStyle: true, pointStyle: 'circle' } }, tooltip: { ...chartDefaults().plugins.tooltip, callbacks: { label: c => ' ' + c.dataset.label + ': ' + fmt.money(c.parsed.y) } } }
+    }
+  });
+}
+
+function renderSegment() {
+  const segs = Object.keys(RAW.segment_sales);
+  const vals = Object.values(RAW.segment_sales);
+  const total = vals.reduce((a,b)=>a+b,0);
+
+  if (charts.segment) charts.segment.destroy();
+  const ctx = document.getElementById('segmentChart').getContext('2d');
+  charts.segment = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: segs,
+      datasets: [{ data: vals, backgroundColor: [COLORS.accent, COLORS.green, COLORS.orange], borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: { display: true, position: 'right', labels: { color: '#7b80a0', font: { family:'Inter', size:11 }, boxWidth: 8, usePointStyle: true, pointStyle: 'circle', generateLabels: chart => segs.map((s,i) => ({ text: s + '  ' + (vals[i]/total*100).toFixed(0) + '%', fillStyle: [COLORS.accent,COLORS.green,COLORS.orange][i], strokeStyle: 'transparent', index: i })) } },
+        tooltip: { ...chartDefaults().plugins.tooltip, callbacks: { label: c => ' ' + fmt.money(c.parsed) + ' (' + (c.parsed/total*100).toFixed(1) + '%)' } }
+      }
+    }
+  });
+}
+
+function renderShip() {
+  const grid = document.getElementById('shipGrid');
+  const total = Object.values(RAW.ship_counts).reduce((a,b)=>a+b,0);
+  const colors = [COLORS.accent, COLORS.orange, COLORS.green, COLORS.purple];
+  grid.innerHTML = Object.entries(RAW.ship_counts).map(([name,cnt],i) => `
+    <div class="ship-pill">
+      <div class="ship-name">${name}</div>
+      <div class="ship-count" style="color:${colors[i]}">${fmt.num(cnt)}</div>
+      <div class="ship-pct">${(cnt/total*100).toFixed(1)}% of orders</div>
+    </div>
+  `).join('');
+}
+
+function renderSubcat() {
+  const list = document.getElementById('subcatList');
+  const maxSales = Math.max(...Object.values(RAW.subcat_sales));
+  list.innerHTML = Object.entries(RAW.subcat_sales).map(([name, sales]) => {
+    const profit = RAW.subcat_profit[name] || 0;
+    const isPosProfit = profit >= 0;
+    const fillColor = isPosProfit ? COLORS.accent : COLORS.red;
+    return `
+      <div class="bar-row">
+        <div class="bar-row-header">
+          <span class="bar-name">${name}</span>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span class="profit-badge ${isPosProfit?'pos':'neg'}">${isPosProfit?'+':''}${fmt.money(profit)}</span>
+            <span class="bar-val">${fmt.money(sales)}</span>
+          </div>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${(sales/maxSales*100).toFixed(1)}%;background:${fillColor}"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderStates() {
+  const list = document.getElementById('stateList');
+  const maxSales = Math.max(...Object.values(RAW.top_states));
+  list.innerHTML = Object.entries(RAW.top_states).map(([state, sales], i) => `
+    <div class="bar-row">
+      <div class="bar-row-header">
+        <span class="bar-name">${state}</span>
+        <span class="bar-val">${fmt.money(sales)}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(sales/maxSales*100).toFixed(1)}%;background:${COLORS.palette[i % COLORS.palette.length]}"></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderAll() {
+  renderKPIs();
+  renderTrend();
+  renderRegion();
+  renderCategory();
+  renderSegment();
+  renderShip();
+  renderSubcat();
+  renderStates();
+}
+
+// ─── Filter handlers ──────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const filter = btn.dataset.filter;
+    const val = btn.dataset.val;
+    state[filter] = val;
+    document.querySelectorAll(`[data-filter="${filter}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderKPIs();
+    renderTrend();
+    renderRegion();
+  });
+});
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>
